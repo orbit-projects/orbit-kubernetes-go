@@ -988,7 +988,7 @@ const file_orbit_plugin_v1_process_plugin_proto_rawDesc = "" +
 	"\n" +
 	"\bShutdown2X\n" +
 	"\rProcessPlugin\x12G\n" +
-	"\aConnect\x12\x1c.orbit.plugin.v1.PluginFrame\x1a\x1a.orbit.plugin.v1.CoreFrame(\x010\x01BAZ?github.com/orbit-projects/orbit-kubernetes-go/internal/wire;wireb\x06proto3"
+	"\aConnect\x12\x1c.orbit.plugin.v1.PluginFrame\x1a\x1a.orbit.plugin.v1.CoreFrame(\x010\x01BBZ@github.com/orbit-projects/orbit-kubernetes-go/internal/wire;wireb\x06proto3"
 
 var (
 	file_orbit_plugin_v1_process_plugin_proto_rawDescOnce sync.Once

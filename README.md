@@ -17,24 +17,28 @@ kubeconfig path and context. It does not create Kubernetes resources or require 
 
 Requires Go 1.24 or later and Protocol Buffers compiler. `make tools` installs the pinned Go
 Protobuf generators used by `make generate`. The discovery contract bindings are consumed from
-`orbit-discovery-go`; this adapter generates only its Core process-host protocol.
+`orbit-discovery-go`; this adapter generates only its Core process-host protocol. The sibling SDK
+must be checked out at `../orbit-discovery-go` while its declared prerelease is not available from
+the Go module proxy.
 
 ```sh
-go test -race ./...
-go vet ./...
-go build -trimpath -o dist/orbit-kubernetes-plugin ./cmd/orbit-kubernetes-plugin
+make test
+make vet
+make build
 ```
 
-Before `orbit-discovery-go` is published, source-workspace maintainers can run
-`sh scripts/test-local-workspace.sh` from a checkout with the sibling SDK directory. It creates a
-temporary Go workspace and does not change either module's release manifest.
+These targets create a temporary Go workspace that resolves the declared SDK version to the sibling
+checkout. They do not change either module's release manifest. Direct `go` commands use the published
+version and become available when that SDK version has been released.
 
-The cross-language conformance test additionally requires Python Core's process-plugin extra and
-`orbit-discovery[process]` in the environment:
+The cross-language conformance test additionally requires Python Core's process-plugin extra,
+`orbit-discovery[process]`, and `pytest` in the Python environment. Install those dependencies and
+run through the local workspace helper so the Go subprocess uses the sibling SDK checkout:
 
 ```sh
-PYTHONPATH="../orbit-core/src:../orbit-discovery/src" \
-  python -m pytest -q tests/e2e
+python -m pip install -e "../orbit-core[process-plugins]" -e "../orbit-discovery[process]" \
+  pytest pytest-asyncio
+make integration
 ```
 
 Core starts the executable with an absolute command path. Configuration is delivered after the
@@ -77,7 +81,7 @@ The process host runs at most 16 operations concurrently, bounds plugin work, se
 and deactivation commands, and drains in-flight work during shutdown. Fake-client tests validate
 selection, caching, configuration, and bounds. A live Kubernetes
 cluster, RBAC policy, version skew, hosted CI, signed binary provenance, and release publication
-have not been verified. This package is pre-alpha and is not certified production-ready.
+have not been verified. This package is in alpha and is not certified production-ready.
 
 Licensed under Apache-2.0.
 

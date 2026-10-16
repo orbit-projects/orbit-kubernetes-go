@@ -180,6 +180,7 @@ func (h *Handler) Resolve(ctx context.Context, service string) (*discoverywire.R
 	return &discoverywire.ResolveResponse{Instances: cloneInstances(instances)}, nil
 }
 
+// Invoke dispatches the versioned discovery capability and returns bounded error codes.
 func (h *Handler) Invoke(ctx context.Context, method string, request *anypb.Any) (*anypb.Any, string) {
 	if method != orbitdiscovery.ResolveMethod {
 		return nil, "unimplemented"

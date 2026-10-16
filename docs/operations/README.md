@@ -1,44 +1,50 @@
-# Orbit Kubernetes Go: operations and security
+# Operations
 
-This guide organizes runtime behavior documented by the package. It does not certify production readiness. Verify provider/client versions, permissions, transport security, limits, and failure behavior in the target environment before release.
+This adapter reads Kubernetes EndpointSlices in one configured namespace. It filters endpoints
+that Kubernetes explicitly marks unready, selects the configured named TCP port, follows bounded
+pagination, and returns immutable discovery snapshots from a bounded TTL cache. It does not
+create, change, or delete Kubernetes resources.
 
-## Configuration surface
+## Identity and RBAC
 
-Environment names found in the package README:
+For in-cluster mode, the plugin uses the Pod's service-account identity and Kubernetes API service
+origin. Grant namespace-scoped permission to read EndpointSlices only. For local administration,
+provide an explicit kubeconfig path and optional context; protect that file as a credential and
+grant the same narrow read access. The `api_server` override is intended for nonstandard in-cluster
+API origins and is rejected when kubeconfig mode is active to avoid ambiguous identity/endpoint
+configuration.
 
-The package README does not name `ORBIT_*` variables. Use its typed constructors and application configuration, and confirm exact runtime inputs in the implementation before deployment.
+Do not enable cluster-wide reads for convenience. Review the effective Role/RoleBinding in the
+target namespace and test with the exact workload identity.
 
-Use the package README's constructor and deployment examples. Store credentials in a secret manager and avoid logging credentials, raw provider errors, request data, or opaque cursors.
+## Process plugin wiring
 
-## Lifecycle, failure behavior, and limits
+Build the `orbit-kubernetes-plugin` executable and use its absolute path in Core's
+`ProcessPlugin` configuration. Set the plugin name to `orbit-kubernetes-go`, declare capability
+`orbit.discovery`, and deliver the documented JSON configuration after the process handshake.
+Register the same Core process object with `ProcessServiceDiscovery` and bind that adapter under
+`DISCOVERY_DEPENDENCY_KEY`. Select either this Go implementation or Python `orbit-kubernetes` in
+application wiring; do not register both for the same dependency key.
 
-`orbit-kubernetes-go` is a complete Go implementation of Orbit's Kubernetes service-discovery
-adapter. It performs namespace-scoped Kubernetes EndpointSlice reads with Kubernetes `client-go`,
-implements the same provider-neutral `orbit.discovery.v1.ServiceDiscovery/Resolve` capability as
-Python `orbit-kubernetes`, and connects to Python Core through the versioned local gRPC process
-protocol. The Python implementation remains independently installable; applications select one
-runtime explicitly. The Go discovery contract library supplies shared generated bindings and
-validation helpers, while this repository owns all Kubernetes API access and provider behavior.
+Core owns process launch, one-use authentication, deadlines, health checks, and process shutdown.
+The host bounds concurrent operations, serializes activation and deactivation, and drains in-flight
+requests during shutdown. Health indicates process readiness only, not live Kubernetes API
+availability. The local gRPC stream is plaintext loopback for trusted same-user code; it is not a
+sandbox.
 
-This package reads namespace-scoped Kubernetes EndpointSlices. It filters endpoints explicitly
-marked unready, selects a named TCP port, follows bounded pagination, limits result size, and caches
-immutable endpoint snapshots for a bounded TTL. It supports in-cluster credentials or an explicit
-kubeconfig path and context. It does not create Kubernetes resources or require cluster-wide reads.
+## Configuration and capacity
 
-## Boundaries and release status
+Review namespace, named port, HTTP(S) scheme, cache TTL, maximum cached services, page size, maximum
+pages, and API timeout for the workload. Cache TTL trades freshness for API load. Pagination,
+fan-out, metadata size, request deadlines, and process concurrency are bounded; size them against
+the number of services and EndpointSlices expected in the namespace. The resolver returns only
+ready instances with a matching TCP port.
 
-The local gRPC stream is plaintext loopback for trusted same-user plugin code. Core's one-use token
-prevents accidental connections; it is not a sandbox or protection from another process running as
-the same user. This adapter does not support mutually untrusted plugins.
+## Validation before rollout
 
-The process host runs at most 16 operations concurrently, bounds plugin work, serializes activation
-and deactivation commands, and drains in-flight work during shutdown. Fake-client tests validate
-selection, caching, configuration, and bounds. A live Kubernetes
-cluster, RBAC policy, version skew, hosted CI, signed binary provenance, and release publication
-have not been verified. This package is pre-alpha and is not certified production-ready.
-
-Licensed under Apache-2.0.
-
-## Production validation
-
-Validate startup/shutdown cleanup, timeout and cancellation behavior, concurrency and payload bounds where applicable, secret rotation and least-privilege access, data durability, backup/restore, and failover against the selected provider. Do not infer distributed or durable guarantees from an in-process API or fake-client tests.
+Run Go unit tests and the local workspace script when using the sibling `orbit-discovery-go` source
+checkout. The Python interoperability suite additionally needs Core's process-plugin extra and
+`orbit-discovery[process]`. In a dedicated non-production cluster, verify service-account RBAC,
+EndpointSlice updates, unready endpoints, port selection, pagination, cache freshness, API outages,
+credential rotation, process restart, deadlines, and shutdown. Fake clients do not certify a live
+cluster or production readiness.

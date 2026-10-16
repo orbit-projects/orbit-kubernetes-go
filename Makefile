@@ -1,4 +1,4 @@
-.PHONY: tools generate test vet build
+.PHONY: tools generate test vet build integration
 
 PATH := $(shell go env GOPATH)/bin:$(PATH)
 
@@ -11,10 +11,13 @@ generate:
 	go run ./scripts/add-generated-license.go
 
 test:
-	go test -race ./...
+	sh ./scripts/test-local-workspace.sh test
 
 vet:
-	go vet ./...
+	sh ./scripts/test-local-workspace.sh vet
 
 build:
-	go build -trimpath -o dist/orbit-kubernetes-plugin ./cmd/orbit-kubernetes-plugin
+	sh ./scripts/test-local-workspace.sh build
+
+integration:
+	sh ./scripts/test-local-workspace.sh integration
